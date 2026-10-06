@@ -3,8 +3,8 @@ name: Inli Scraper Bot
 on:
   schedule:
     # Exécution toutes les 5 minutes
-    # 6-19h UTC = 8h-21h France (heure d'été)
-    - cron: '*/5 6-19 * * 1-5'
+    # Tous les jours (Lundi à Dimanche), 24h/24 :
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Permet de lancer manuellement
 
 jobs:
