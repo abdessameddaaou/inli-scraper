@@ -74,6 +74,11 @@ def parse_annonces(html):
         # La ville est généralement le dernier élément du texte
         ville = texte.split('|')[-1].strip() if '|' in texte else ''
 
+        # Garder uniquement Paris intra-muros (codes postaux 75001 à 75020 / 75116)
+        est_paris = re.search(r'-75\d{3}(?:/|$)', href) or ville.lower().startswith('paris')
+        if not est_paris:
+            continue
+
         annonces.append({
             'id': annonce_id,
             'url': f"https://www.inli.fr{href}",
