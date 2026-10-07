@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import re
 import requests
@@ -7,7 +8,8 @@ from datetime import datetime
 
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
-INLI_SEARCH_URL = os.getenv('INLI_SEARCH_URL', 'https://www.inli.fr/locations/offres/paris-departement_d:75')
+# GitHub Actions passe une chaîne vide si le secret n'existe pas : `or` garde la valeur par défaut
+INLI_SEARCH_URL = os.getenv('INLI_SEARCH_URL') or 'https://www.inli.fr/locations/offres/paris-departement_d:75'
 
 SEEN_FILE = 'seen_ids.json'
 
@@ -19,10 +21,12 @@ def send_telegram_message(message):
         "parse_mode": "HTML"
     }
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
+        return True
     except Exception as e:
         print(f"Erreur Telegram : {e}")
+        return False
 
 def load_seen_ids():
     """Charger les IDs des annonces déjà vues"""
@@ -90,11 +94,11 @@ def main():
     }
 
     try:
-        response = requests.get(INLI_SEARCH_URL, headers=headers)
+        response = requests.get(INLI_SEARCH_URL, headers=headers, timeout=30)
         response.raise_for_status()
     except Exception as e:
         print(f"Erreur HTTP : {e}")
-        return
+        sys.exit(1)
 
     # Vérifier s'il y a des annonces sur la page
     if "Aucune annonce disponible" in response.text:
@@ -107,7 +111,7 @@ def main():
 
     if not annonces:
         print("Page modifiée mais aucune annonce parseable.")
-        return
+        sys.exit(1)
 
     # Charger les annonces déjà vues
     seen_ids = load_seen_ids()
@@ -119,6 +123,7 @@ def main():
 
     print(f"{len(nouvelles)} nouvelle(s) annonce(s) détectée(s) !")
 
+    echecs = 0
     for annonce in nouvelles:
         neuf_tag = "🏗️ Neuf | " if annonce['neuf'] else ""
         message = (
@@ -129,13 +134,19 @@ def main():
             f"{neuf_tag}\n"
             f"🔗 <a href=\"{annonce['url']}\">Voir l'annonce</a>"
         )
-        send_telegram_message(message)
+        if not send_telegram_message(message):
+            echecs += 1
+            continue
         seen_ids.add(annonce['id'])
         print(f"  -> Notification envoyee : {annonce['id']} ({annonce['ville']})")
 
     # Sauvegarder
     save_seen_ids(seen_ids)
     print("IDs sauvegardés.")
+
+    if echecs:
+        print(f"{echecs} notification(s) non envoyée(s), nouvel essai au prochain passage.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
