@@ -9,16 +9,16 @@ on:
 
 jobs:
   scrape-and-notify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write # Requis pour commit le fichier seen_ids.json
 
     steps:
       - name: Checkout du code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configuration de Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
