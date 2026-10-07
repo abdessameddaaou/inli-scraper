@@ -1,11 +1,11 @@
 name: Inli Scraper Bot
 
 on:
+  repository_dispatch:
+    types: [trigger-cron]
   schedule:
-    # Exécution toutes les 5 minutes
-    # Tous les jours (Lundi à Dimanche), 24h/24 :
     - cron: '*/5 * * * *'
-  workflow_dispatch: # Permet de lancer manuellement
+  workflow_dispatch:
 
 jobs:
   scrape-and-notify:
