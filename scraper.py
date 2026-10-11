@@ -41,7 +41,7 @@ def load_seen_ids():
 def save_seen_ids(seen_ids):
     """Sauvegarder les IDs des annonces vues"""
     with open(SEEN_FILE, 'w') as f:
-        json.dump(list(seen_ids), f)
+        json.dump(sorted(seen_ids), f, indent=2)
 
 def parse_annonces(html):
     """
@@ -140,7 +140,6 @@ def main():
         seen_ids.add(annonce['id'])
         print(f"  -> Notification envoyee : {annonce['id']} ({annonce['ville']})")
 
-    # Sauvegarder
     save_seen_ids(seen_ids)
     print("IDs sauvegardés.")
 

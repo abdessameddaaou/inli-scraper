@@ -1,7 +1,18 @@
+"""Envoie une notification de test sur Telegram.
+
+Usage :
+    TELEGRAM_BOT_TOKEN=xxx TELEGRAM_CHAT_ID=yyy python test_notif.py
+"""
+import os
+import sys
+
 import requests
 
-TOKEN = '8707801230:AAG0srIN94csOcJsZ6FT8EaIuQeCyrUkN0g'
-CHAT_ID = '5738132883'
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+if not TOKEN or not CHAT_ID:
+    sys.exit("Définis TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID avant de lancer le test.")
 
 message = (
     "🚨 <b>Nouvelle Annonce Inli !</b> 🚨\n\n"
@@ -14,6 +25,7 @@ message = (
 
 r = requests.post(
     f'https://api.telegram.org/bot{TOKEN}/sendMessage',
-    json={'chat_id': CHAT_ID, 'text': message, 'parse_mode': 'HTML'}
+    json={'chat_id': CHAT_ID, 'text': message, 'parse_mode': 'HTML'},
+    timeout=30,
 )
 print(r.status_code, r.json())

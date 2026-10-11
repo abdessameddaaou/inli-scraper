@@ -1,15 +1,50 @@
 name: Inli Scraper Bot
 
 on:
+  # Déclencheur externe (cron-job / worker) — filtré par le job "check" ci-dessous
   repository_dispatch:
     types: [trigger-cron]
+  # Planning GitHub : lun-ven, 5h-20h UTC (couvre 8h-21h Paris en heure d'été comme d'hiver)
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 5-20 * * 1-5'
+  # Lancement manuel : toujours exécuté, même le week-end
   workflow_dispatch:
 
+# Un seul run à la fois : évite les doublons de notifications et les conflits de push
+concurrency:
+  group: inli-scraper
+  cancel-in-progress: false
+
 jobs:
-  scrape-and-notify:
+  check:
+    name: Vérifier le créneau (lun-ven, 8h-21h Paris)
     runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.slot.outputs.run }}
+    steps:
+      - id: slot
+        run: |
+          DAY=$(TZ=Europe/Paris date +%u)    # 1 = lundi ... 7 = dimanche
+          HOUR=$(TZ=Europe/Paris date +%-H)
+          echo "Heure de Paris : $(TZ=Europe/Paris date '+%A %d/%m %H:%M')"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Lancement manuel : on exécute."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$DAY" -ge 6 ]; then
+            echo "Week-end : on ne fait rien."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HOUR" -lt 8 ] || [ "$HOUR" -ge 21 ]; then
+            echo "Hors horaires (8h-21h) : on ne fait rien."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  scrape-and-notify:
+    needs: check
+    if: needs.check.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: write # Requis pour commit le fichier seen_ids.json
 
@@ -20,7 +55,7 @@ jobs:
       - name: Configuration de Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.10'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Installation des dépendances
@@ -36,7 +71,13 @@ jobs:
       - name: Sauvegarder l'état (annonces vues)
         if: always()
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add seen_ids.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: Annonces vues" && git push)
+          if git diff --staged --quiet; then
+            echo "Aucune nouvelle annonce à sauvegarder."
+          else
+            git commit -m "Auto-update: Annonces vues"
+            git pull --rebase
+            git push
+          fi
