@@ -4,9 +4,9 @@ on:
   # Déclencheur externe (cron-job / worker) — filtré par le job "check" ci-dessous
   repository_dispatch:
     types: [trigger-cron]
-  # Planning GitHub : lun-ven, 5h-20h UTC (couvre 8h-21h Paris en heure d'été comme d'hiver)
+  # Planning GitHub : toutes les 5 min, dim-ven en UTC (le job "check" garde uniquement lun-ven heure de Paris)
   schedule:
-    - cron: '*/5 5-20 * * 1-5'
+    - cron: '*/5 * * * 0-5'
   # Lancement manuel : toujours exécuté, même le week-end
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   check:
-    name: Vérifier le créneau (lun-ven, 8h-21h Paris)
+    name: Vérifier le jour (lun-ven, heure de Paris)
     runs-on: ubuntu-24.04
     outputs:
       run: ${{ steps.slot.outputs.run }}
@@ -25,16 +25,12 @@ jobs:
       - id: slot
         run: |
           DAY=$(TZ=Europe/Paris date +%u)    # 1 = lundi ... 7 = dimanche
-          HOUR=$(TZ=Europe/Paris date +%-H)
           echo "Heure de Paris : $(TZ=Europe/Paris date '+%A %d/%m %H:%M')"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Lancement manuel : on exécute."
             echo "run=true" >> "$GITHUB_OUTPUT"
           elif [ "$DAY" -ge 6 ]; then
             echo "Week-end : on ne fait rien."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          elif [ "$HOUR" -lt 8 ] || [ "$HOUR" -ge 21 ]; then
-            echo "Hors horaires (8h-21h) : on ne fait rien."
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"

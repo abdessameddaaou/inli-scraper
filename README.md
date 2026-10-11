@@ -4,8 +4,8 @@ Bot automatique qui surveille les annonces sur [inli.fr](https://www.inli.fr) et
 
 ## Fonctionnement
 
-- Toutes les **5 minutes**, du **lundi au vendredi**, de **8h à 21h** (heure de Paris)
-- Le week-end et hors horaires, le workflow s'arrête immédiatement (job `check`), même s'il est déclenché par un appel externe (`repository_dispatch`)
+- Toutes les **5 minutes**, 24h/24 du **lundi au vendredi** (heure de Paris)
+- Le week-end, le workflow s'arrête immédiatement (job `check`), même s'il est déclenché par un appel externe (`repository_dispatch`)
 - Un lancement manuel (**Run workflow**) s'exécute toujours, quel que soit le jour
 - Le script charge la page de recherche In'li
 - Il compare les annonces avec celles déjà vues (`seen_ids.json`)
